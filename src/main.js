@@ -2,6 +2,9 @@ import './style.css';
 import { Device } from '@twilio/voice-sdk';
 import { createClient } from '@supabase/supabase-js';
 
+// Check if Twilio is enabled
+const isTwilioEnabled = import.meta.env.VITE_ENABLE_TWILIO === 'true';
+
 // Enhanced UI elements
 const els = {
   number: document.getElementById('number'),
@@ -30,12 +33,12 @@ const els = {
 };
 
 // Application state
-const state = { 
-  device: null, 
-  call: null, 
-  identity: '', 
-  password: '', 
-  callerId: '', 
+const state = {
+  device: null,
+  call: null,
+  identity: '',
+  password: '',
+  callerId: '',
   muted: false,
   userRole: 'caller' // Default role
 };
@@ -49,6 +52,38 @@ if (supabaseUrl && supabaseAnonKey) {
   supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
   console.warn('Konfiguracja Supabase nie znaleziona. Niektóre funkcje mogą nie działać.');
+}
+
+// Hide Twilio-related UI if disabled
+if (!isTwilioEnabled) {
+  console.log('Twilio wyłączone - ukrywanie interfejsu dzwonienia');
+  if (els.phoneInterface) els.phoneInterface.style.display = 'none';
+  if (els.recordingsSection) els.recordingsSection.style.display = 'none';
+
+  // Update connection status
+  if (els.connectionIndicator && els.connectionText) {
+    els.connectionIndicator.className = 'status-indicator ready';
+    els.connectionText.textContent = 'Tryb zarządzania (dzwonienie wyłączone)';
+  }
+
+  // Keep auth section visible but modify the message
+  if (els.authSection) {
+    const authHeader = els.authSection.querySelector('.auth-header h2');
+    if (authHeader) {
+      authHeader.textContent = 'Logowanie do systemu zarządzania';
+    }
+    const authSubtext = document.createElement('p');
+    authSubtext.style.cssText = 'text-align: center; color: #666; margin-top: 10px; font-size: 14px;';
+    authSubtext.textContent = 'Funkcja dzwonienia przez Twilio jest wyłączona';
+    const authHeaderDiv = els.authSection.querySelector('.auth-header');
+    if (authHeaderDiv && !authHeaderDiv.querySelector('p')) {
+      authHeaderDiv.appendChild(authSubtext);
+    }
+    const callerIdGroup = els.authSection.querySelector('label[for="callerId"]')?.parentElement;
+    if (callerIdGroup) {
+      callerIdGroup.style.display = 'none';
+    }
+  }
 }
 
 // Edge Function URL helper
@@ -383,12 +418,48 @@ function setupNumberInput() {
 els.login?.addEventListener('click', async () => {
   const identity = document.getElementById('identity').value.trim();
   const password = document.getElementById('password').value.trim();
-  if (!identity || !password) { 
-    alert('Wprowadź tożsamość i hasło'); 
+  if (!identity || !password) {
+    alert('Wprowadź tożsamość i hasło');
     return;
   }
-  
+
   try {
+    // Skip Twilio initialization if disabled
+    if (!isTwilioEnabled) {
+      console.log('[Login] Twilio wyłączone - pomijanie inicjalizacji urządzenia');
+      state.identity = identity;
+      state.password = password;
+
+      // Get user info directly (skip token generation)
+      const userInfoUrl = `${getEdgeFunctionUrl('user-info')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`;
+      console.log('[Login] Requesting user info from:', userInfoUrl);
+      const userInfo = await fetchJson(userInfoUrl);
+      console.log('[Login] User info response:', userInfo);
+
+      if (!userInfo || !userInfo.role) {
+        throw new Error('Nie otrzymano informacji o użytkowniku');
+      }
+
+      const { role } = userInfo;
+      state.userRole = role;
+
+      // Show panels based on role without phone interface
+      if (state.userRole === 'admin') {
+        els.adminPanel.classList.remove('hidden');
+        loadUsers();
+      } else if (state.userRole === 'manager') {
+        els.managerPanel.classList.remove('hidden');
+        loadLeads(state.userRole);
+        loadUsersForAssignment();
+      } else { // caller
+        els.callerPanel.classList.remove('hidden');
+        loadLeads(state.userRole);
+      }
+
+      console.log('[Login] Zalogowano pomyślnie bez Twilio');
+      return;
+    }
+
     setStatus('Pobieranie tokena dostępu...');
     // 1) Token with password
     const tokenUrl = `${getEdgeFunctionUrl('token')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`;
@@ -547,6 +618,11 @@ els.login?.addEventListener('click', async () => {
 
 // Enhanced call functionality with better UI feedback
 document.getElementById('call')?.addEventListener('click', async () => {
+  if (!isTwilioEnabled) {
+    alert('Funkcja dzwonienia jest wyłączona (Twilio nieaktywne)');
+    return;
+  }
+
   const to = document.getElementById('number').value.trim();
   if (!to.startsWith('+')) return setStatus('Wprowadź numer w formacie E.164, np. +15551234567');
   if (!state.device) return setStatus('Najpierw się zaloguj');
