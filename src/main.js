@@ -413,9 +413,31 @@ els.login?.addEventListener('click', async () => {
       }
     });
 
-    // Wire device events
-    state.device.on('error', e => setStatus(`Błąd urządzenia: ${e.message}`));
-    await state.device.register();
+    // Wire device events with error handling
+    let deviceError = null;
+    const errorPromise = new Promise((_, reject) => {
+      state.device.on('error', e => {
+        console.error('[Device] Error event:', e);
+        deviceError = e;
+        setStatus(`Błąd urządzenia: ${e.message}`);
+        reject(e);
+      });
+    });
+
+    // Register device and race against error event
+    try {
+      await Promise.race([
+        state.device.register().then(() => new Promise(resolve => setTimeout(resolve, 1000))),
+        errorPromise
+      ]);
+    } catch (err) {
+      throw err;
+    }
+
+    // Check if an error occurred during registration
+    if (deviceError) {
+      throw deviceError;
+    }
 
     // 3) Get user info (role and caller IDs)
     const userInfoUrl = `${getEdgeFunctionUrl('user-info')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`;
@@ -504,8 +526,8 @@ els.login?.addEventListener('click', async () => {
         alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase:\n• TWILIO_ACCOUNT_SID\n• TWILIO_API_KEY_SID\n• TWILIO_API_KEY_SECRET\n• TWIML_APP_SID\n\nPrzejdź do: Supabase Dashboard → Project Settings → Edge Functions → Secrets`);
       } else if (errorMessage.includes('Invalid credentials')) {
         alert('Nieprawidłowa nazwa użytkownika lub hasło.');
-      } else if (errorMessage.includes('AccessTokenInvalid')) {
-        alert('⚠️ Token Twilio jest nieprawidłowy.\n\nSprawdź konfigurację Twilio API Key i TwiML App SID.\n\nDiagnostyka pokazuje, że wszystkie zmienne są ustawione, ale token jest odrzucany przez Twilio.');
+      } else if (errorMessage.includes('AccessTokenInvalid') || errorMessage.includes('20101')) {
+        alert(`⚠️ Token Twilio jest nieprawidłowy (Błąd 20101)\n\nWszystkie zmienne środowiskowe są ustawione, ale Twilio odrzuca token.\n\nMożliwe przyczyny:\n• TWILIO_API_KEY_SID lub TWILIO_API_KEY_SECRET są nieprawidłowe\n• API Key nie należy do tego samego konta co TWILIO_ACCOUNT_SID\n• TWIML_APP_SID nie istnieje lub nie jest skonfigurowany\n• API Key został usunięty lub dezaktywowany w Twilio\n\nSprawdź konfigurację w Twilio Console:\n1. API Keys: https://console.twilio.com/us1/develop/voice/manage/api-keys\n2. TwiML Apps: https://console.twilio.com/us1/develop/voice/manage/twiml-apps\n\nUpewnij się, że wszystkie wartości pochodzą z tego samego konta Twilio.`);
       } else {
         alert(`Logowanie nieudane: ${errorMessage}`);
       }
@@ -514,6 +536,8 @@ els.login?.addEventListener('click', async () => {
       // Fallback to basic error message
       if (errorMessage.includes('Twilio configuration missing')) {
         alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase.`);
+      } else if (errorMessage.includes('AccessTokenInvalid') || errorMessage.includes('20101')) {
+        alert(`⚠️ Token Twilio jest nieprawidłowy (Błąd 20101)\n\nSprawdź konfigurację Twilio API Keys i TwiML App SID.\n\nUpewnij się, że wszystkie klucze pochodzą z tego samego konta Twilio.`);
       } else {
         alert(`Logowanie nieudane: ${errorMessage}`);
       }
