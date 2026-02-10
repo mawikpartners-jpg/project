@@ -56,6 +56,14 @@ const getEdgeFunctionUrl = (functionName) => {
   return `${supabaseUrl}/functions/v1/${functionName}`;
 };
 
+// Edge Function headers helper
+const getEdgeFunctionHeaders = () => {
+  return {
+    'Authorization': `Bearer ${supabaseAnonKey}`,
+    'Content-Type': 'application/json'
+  };
+};
+
 // Global users list for dropdowns
 let allUsers = [];
 
@@ -73,7 +81,7 @@ window.createLead = async function() {
   try {
     const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getEdgeFunctionHeaders(),
       body: JSON.stringify({
         phoneNumber, leadInfo, assignedTo, identity: state.identity, password: state.password,
         action: 'create'
@@ -105,7 +113,7 @@ window.updateLead = async function(leadId, notes, status) {
   try {
     const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getEdgeFunctionHeaders(),
       body: JSON.stringify({
         leadId, notes, status, identity: state.identity, password: state.password,
         action: 'update'
@@ -139,7 +147,7 @@ window.assignLead = async function(leadId, assignedTo) {
   try {
     const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getEdgeFunctionHeaders(),
       body: JSON.stringify({
         leadId, assignedTo, identity: state.identity, password: state.password,
         action: 'assign'
@@ -180,7 +188,7 @@ window.createUser = async function() {
   try {
     const response = await fetch(getEdgeFunctionUrl('admin-users'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getEdgeFunctionHeaders(),
       body: JSON.stringify({
         newIdentity, newPassword, role: newRole, callerIds: newCallerIds,
         identity: state.identity, password: state.password,
@@ -273,7 +281,9 @@ function updateConnectionStatus(state, text) {
 
 // API function
 async function fetchJson(url) {
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    headers: getEdgeFunctionHeaders()
+  });
   const text = await res.text();
   if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
   try { return JSON.parse(text); } catch { throw new Error(`Invalid JSON: ${text.slice(0,200)}`); }
@@ -540,7 +550,9 @@ els.loadCalls.addEventListener('click', async () => {
     els.loadCalls.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Ładowanie...</span>';
     els.callList.innerHTML = 'Ładowanie historii połączeń...';
     
-    const res = await fetch(`${getEdgeFunctionUrl('recordings')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&days=30`);
+    const res = await fetch(`${getEdgeFunctionUrl('recordings')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&days=30`, {
+      headers: getEdgeFunctionHeaders()
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     
     const json = await res.json();
@@ -623,7 +635,9 @@ async function loadUsers() {
   if (state.userRole !== 'admin') return;
   els.usersList.innerHTML = 'Ładowanie użytkowników...';
   try {
-    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
+    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`, {
+      headers: getEdgeFunctionHeaders()
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { users } = await response.json();
     renderUsers(users);
@@ -668,7 +682,9 @@ async function loadLeads(role) {
   
   targetList.innerHTML = 'Ładowanie leadów...';
   try {
-    const response = await fetch(`${getEdgeFunctionUrl('leads')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=get`);
+    const response = await fetch(`${getEdgeFunctionUrl('leads')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=get`, {
+      headers: getEdgeFunctionHeaders()
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { leads } = await response.json();
     if (role === 'manager') {
@@ -763,7 +779,9 @@ function renderCallerLeads(leads) {
 async function loadUsersForAssignment() {
   if (state.userRole !== 'manager') return;
   try {
-    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
+    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`, {
+      headers: getEdgeFunctionHeaders()
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { users } = await response.json();
     allUsers = users || [];
