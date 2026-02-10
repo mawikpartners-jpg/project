@@ -436,9 +436,16 @@ els.login?.addEventListener('click', async () => {
     setStatus(`Gotowy jako ${identity}`);
 
   } catch (e) {
-    console.error(e);
-    setStatus(`Logowanie nieudane: ${e.message}`);
-    alert(`Logowanie nieudane: ${e.message}`);
+    console.error('Login error:', e);
+    const errorMessage = e?.message || String(e) || 'Nieznany błąd';
+    setStatus(`Logowanie nieudane: ${errorMessage}`);
+
+    // Check if it's a configuration error
+    if (errorMessage.includes('Twilio configuration missing')) {
+      alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase:\n• TWILIO_ACCOUNT_SID\n• TWILIO_API_KEY_SID\n• TWILIO_API_KEY_SECRET\n• TWIML_APP_SID\n\nPrzejdź do: Supabase Dashboard → Project Settings → Edge Functions → Secrets`);
+    } else {
+      alert(`Logowanie nieudane: ${errorMessage}`);
+    }
   }
 });
 
