@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Softphone Pro</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <i class="fas fa-phone-alt"></i>
+            <span>AGMAR CALL</span>
+          </div>
+          <div class="connection-status">
+            <div id="connection-indicator" class="status-indicator"></div>
+            <span id="connection-text">Łączenie...</span>
+          </div>
+        </div>
+      </header>
+      
+      <main class="main-content">
+        <div id="authSection" class="auth-section">
+          <div class="auth-container">
+            <div class="auth-header">
+              <h2>Uwierzytelnianie użytkownika</h2>
+            </div>
+            <div class="auth-form">
+              <div class="input-group">
+                <label for="identity">Tożsamość:</label>
+                <input id="identity" type="text" placeholder="alice" class="auth-input" />
+              </div>
+              <div class="input-group">
+                <label for="password">Hasło:</label>
+                <input id="password" type="password" placeholder="Wprowadź hasło" class="auth-input" />
+              </div>
+              <button id="login" class="auth-btn">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Zaloguj się</span>
+              </button>
+              <div class="input-group">
+                <label for="callerId">Identyfikator dzwoniącego:</label>
+                <select id="callerId" class="auth-select" disabled>
+                  <option>Wprowadź dane, aby zobaczyć swoje numery</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="phoneInterface" class="phone-interface hidden">
+          <div class="display-section">
+            <div class="number-display">
+              <input 
+                id="number" 
+                type="tel" 
+                placeholder="Wprowadź numer telefonu" 
+                autocomplete="tel"
+                class="number-input"
+              />
+              <button class="clear-btn" id="clear" title="Wyczyść">
+                <i class="fas fa-backspace"></i>
+              </button>
+            </div>
+            
+            <div class="status-display">
+              <div id="status" class="call-status">
+                <i class="fas fa-circle-notch fa-spin status-icon"></i>
+                <span class="status-text">Inicjowanie...</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="keypad">
+            <div class="keypad-row">
+              <button class="key" data-digit="1">1<span class="letters"></span></button>
+              <button class="key" data-digit="2">2<span class="letters">ABC</span></button>
+              <button class="key" data-digit="3">3<span class="letters">DEF</span></button>
+            </div>
+            <div class="keypad-row">
+              <button class="key" data-digit="4">4<span class="letters">GHI</span></button>
+              <button class="key" data-digit="5">5<span class="letters">JKL</span></button>
+              <button class="key" data-digit="6">6<span class="letters">MNO</span></button>
+            </div>
+            <div class="keypad-row">
+              <button class="key" data-digit="7">7<span class="letters">PQRS</span></button>
+              <button class="key" data-digit="8">8<span class="letters">TUV</span></button>
+              <button class="key" data-digit="9">9<span class="letters">WXYZ</span></button>
+            </div>
+            <div class="keypad-row">
+              <button class="key" data-digit="*">*</button>
+              <button class="key" data-digit="0">0<span class="letters">+</span></button>
+              <button class="key" data-digit="#">#</button>
+            </div>
+          </div>
+          
+          <div class="call-controls">
+            <button id="call" class="control-btn call-btn" title="Zadzwoń">
+              <i class="fas fa-phone"></i>
+              <span>Zadzwoń</span>
+            </button>
+            <button id="hangup" class="control-btn hangup-btn" disabled title="Rozłącz">
+              <i class="fas fa-phone-slash"></i>
+              <span>Rozłącz</span>
+            </button>
+            <button id="mute" class="control-btn mute-btn" disabled title="Wycisz">
+              <i class="fas fa-microphone"></i>
+              <span>Wycisz</span>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="admin-panel hidden">
+          <div class="panel-container">
+            <div class="panel-header">
+              <h2>Panel administratora</h2>
+              <p>Zarządzaj użytkownikami i ustawieniami systemu</p>
+            </div>
+            <div class="panel-content">
+              <div class="users-management">
+                <h3>Zarządzanie użytkownikami</h3>
+                <div id="usersList" class="users-list">
+                  Ładowanie użytkowników...
+                </div>
+                <div class="new-user-form">
+                  <h4>Utwórz nowego użytkownika</h4>
+                  <form id="newUserForm">
+                    <div class="form-group">
+                      <label for="newIdentity">Tożsamość (Nazwa użytkownika):</label>
+                      <input type="text" id="newIdentity" placeholder="nazwa_użytkownika" required />
+                    </div>
+                    <div class="form-group">
+                      <label for="newPassword">Hasło:</label>
+                      <input type="password" id="newPassword" placeholder="hasło" required />
+                    </div>
+                    <div class="form-group">
+                      <label for="newRole">Rola:</label>
+                      <select id="newRole" required>
+                        <option value="caller">Dzwoniący</option>
+                        <option value="manager">Menedżer</option>
+                        <option value="admin">Administrator</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="newCallerIds">Identyfikatory dzwoniącego (rozdzielone przecinkami):</label>
+                      <input type="text" id="newCallerIds" placeholder="+1234567890,+19876543210" />
+                    </div>
+                    <button type="button" onclick="createUser()" class="btn-primary">
+                      <i class="fas fa-user-plus"></i> Utwórz użytkownika
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Manager Panel -->
+        <div id="managerPanel" class="manager-panel hidden">
+          <div class="panel-container">
+            <div class="panel-header">
+              <h2>Panel menedżera</h2>
+              <p>Prześlij i zarządzaj leadami</p>
+            </div>
+            <div class="panel-content">
+              <div class="leads-upload">
+                <h3>Prześlij nowy lead</h3>
+                <form id="leadForm" class="lead-form">
+                  <div class="form-group">
+                    <label for="leadFileUpload">Plik CSV:</label>
+                  <input type="file" id="leadFileUpload" accept=".csv" onchange="handleFileUpload(event)" />
+                    <small>Format CSV: numerTelefonu,informacjeOLedzie,przypisanyDo (jeden na linię)</small>
+                  </div>
+                  <div class="form-group">
+                    <label for="leadPhoneNumber">Numer telefonu:</label>
+                    <input type="tel" id="leadPhoneNumber" placeholder="+1234567890" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="leadInfo">Informacje o leadzie:</label>
+                    <textarea id="leadInfo" placeholder="Wprowadź szczegóły leada..." required></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="assignToCaller">Przypisz do dzwoniącego:</label>
+                    <input type="text" id="assignToCaller" placeholder="nazwa_użytkownika_dzwoniącego (opcjonalnie)" />
+                  </div>
+                  <button type="button" onclick="createLead()" class="btn-primary">
+                    <i class="fas fa-plus"></i> Utwórz leada
+                  </button>
+                </form>
+              </div>
+              <div class="leads-management">
+                <h3>Wszystkie leady</h3>
+                <div id="managerLeadsList" class="manager-leads-list">
+                  Ładowanie leadów...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Caller Panel -->
+        <div id="callerPanel" class="caller-panel hidden">
+          <div class="panel-container">
+            <div class="panel-header">
+              <h2>Twoje leady</h2>
+              <p>Zadzwoń do przypisanych leadów i zaktualizuj ich status</p>
+            </div>
+            <div class="panel-content">
+              <div id="leadsList" class="leads-list">
+                Ładowanie Twoich leadów...
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      
+      <section id="recordingsSection" class="recordings-section hidden">
+        <div class="recordings-container">
+          <div class="recordings-header">
+            <h2>Historia połączeń</h2>
+            <button id="loadCalls" class="recordings-btn" disabled>
+              <i class="fas fa-history"></i>
+              <span>Załaduj historię połączeń (30 dni)</span>
+            </button>
+          </div>
+          <div class="recordings-content">
+            <div id="callList" class="recordings-list">Zaloguj się i kliknij "Załaduj historię połączeń", aby wyświetlić historię połączeń</div>
+          </div>
+        </div>
+      </section>
+      
+      <footer class="footer">
+        <div class="footer-content">
+          <div id="footerInfo" class="info hidden">
+            <i class="fas fa-info-circle"></i>
+            <span>Użyj formatu międzynarodowego (np. +1 415 555 1234)</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
