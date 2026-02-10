@@ -466,24 +466,57 @@ els.login?.addEventListener('click', async () => {
     console.error('Login error:', e);
     console.error('Error stack:', e?.stack);
     console.error('Error type:', typeof e);
-    console.error('Error object:', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+
+    // Safe error object logging
+    if (e !== null && e !== undefined) {
+      try {
+        console.error('Error object:', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+      } catch (jsonError) {
+        console.error('Could not stringify error');
+      }
+    }
 
     let errorMessage = 'Nieznany błąd';
     if (e && typeof e === 'object') {
       errorMessage = e.message || e.toString() || 'Nieznany błąd';
     } else if (typeof e === 'string') {
       errorMessage = e;
+    } else if (e === null || e === undefined) {
+      errorMessage = 'Błąd bez szczegółów (sprawdź konsolę)';
     } else {
       errorMessage = String(e);
     }
 
     setStatus(`Logowanie nieudane: ${errorMessage}`);
 
-    // Check if it's a configuration error
-    if (errorMessage.includes('Twilio configuration missing')) {
-      alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase:\n• TWILIO_ACCOUNT_SID\n• TWILIO_API_KEY_SID\n• TWILIO_API_KEY_SECRET\n• TWIML_APP_SID\n\nPrzejdź do: Supabase Dashboard → Project Settings → Edge Functions → Secrets`);
-    } else {
-      alert(`Logowanie nieudane: ${errorMessage}`);
+    // Run diagnostics
+    try {
+      const diagUrl = `${getEdgeFunctionUrl('diagnose')}`;
+      console.log('[Login] Running diagnostics...');
+      const diagResult = await fetchJson(diagUrl);
+      console.log('[Login] Diagnostics result:', diagResult);
+
+      // Check if it's a configuration error
+      if (!diagResult.allConfigured) {
+        const missing = diagResult.missingVariables.join('\n• ');
+        alert(`⚠️ Konfiguracja Twilio jest niepełna!\n\nBrakujące zmienne:\n• ${missing}\n\nSkontaktuj się z administratorem, aby skonfigurować zmienne środowiskowe w Supabase Dashboard.`);
+      } else if (errorMessage.includes('Twilio configuration missing')) {
+        alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase:\n• TWILIO_ACCOUNT_SID\n• TWILIO_API_KEY_SID\n• TWILIO_API_KEY_SECRET\n• TWIML_APP_SID\n\nPrzejdź do: Supabase Dashboard → Project Settings → Edge Functions → Secrets`);
+      } else if (errorMessage.includes('Invalid credentials')) {
+        alert('Nieprawidłowa nazwa użytkownika lub hasło.');
+      } else if (errorMessage.includes('AccessTokenInvalid')) {
+        alert('⚠️ Token Twilio jest nieprawidłowy.\n\nSprawdź konfigurację Twilio API Key i TwiML App SID.\n\nDiagnostyka pokazuje, że wszystkie zmienne są ustawione, ale token jest odrzucany przez Twilio.');
+      } else {
+        alert(`Logowanie nieudane: ${errorMessage}`);
+      }
+    } catch (diagError) {
+      console.error('Diagnostics error:', diagError);
+      // Fallback to basic error message
+      if (errorMessage.includes('Twilio configuration missing')) {
+        alert(`⚠️ Konfiguracja Twilio brakuje!\n\nMusisz skonfigurować zmienne środowiskowe w Supabase.`);
+      } else {
+        alert(`Logowanie nieudane: ${errorMessage}`);
+      }
     }
   }
 });

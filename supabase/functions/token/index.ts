@@ -34,6 +34,17 @@ Deno.serve(async (req: Request) => {
     const API_KEY_SECRET = Deno.env.get("TWILIO_API_KEY_SECRET");
     const TWIML_APP_SID = Deno.env.get("TWIML_APP_SID");
 
+    console.log("Token request for identity:", identity);
+    console.log("Twilio config check:", {
+      hasAccountSid: !!ACCOUNT_SID,
+      hasApiKeySid: !!API_KEY_SID,
+      hasApiKeySecret: !!API_KEY_SECRET,
+      hasTwimlAppSid: !!TWIML_APP_SID,
+      accountSidPrefix: ACCOUNT_SID?.substring(0, 10),
+      apiKeySidPrefix: API_KEY_SID?.substring(0, 10),
+      twimlAppSidPrefix: TWIML_APP_SID?.substring(0, 10),
+    });
+
     if (!ACCOUNT_SID || !API_KEY_SID || !API_KEY_SECRET || !TWIML_APP_SID) {
       return new Response("Twilio configuration missing", {
         status: 500,
