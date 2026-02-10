@@ -281,12 +281,21 @@ function updateConnectionStatus(state, text) {
 
 // API function
 async function fetchJson(url) {
+  console.log('[fetchJson] Calling:', url);
   const res = await fetch(url, {
     headers: getEdgeFunctionHeaders()
   });
+  console.log('[fetchJson] Response status:', res.status);
   const text = await res.text();
+  console.log('[fetchJson] Response text:', text.slice(0, 500));
   if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
-  try { return JSON.parse(text); } catch { throw new Error(`Invalid JSON: ${text.slice(0,200)}`); }
+  try {
+    const json = JSON.parse(text);
+    console.log('[fetchJson] Parsed JSON:', json);
+    return json;
+  } catch {
+    throw new Error(`Invalid JSON: ${text.slice(0,200)}`);
+  }
 }
 
 // Enhanced keypad functionality
@@ -382,7 +391,16 @@ els.login?.addEventListener('click', async () => {
   try {
     setStatus('Pobieranie tokena dostępu...');
     // 1) Token with password
-    const { token } = await fetchJson(`${getEdgeFunctionUrl('token')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
+    const tokenUrl = `${getEdgeFunctionUrl('token')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`;
+    console.log('[Login] Requesting token from:', tokenUrl);
+    const tokenResponse = await fetchJson(tokenUrl);
+    console.log('[Login] Token response:', tokenResponse);
+
+    if (!tokenResponse || !tokenResponse.token) {
+      throw new Error('Nie otrzymano tokena z serwera');
+    }
+
+    const { token } = tokenResponse;
 
     // 2) Register Device
     state.identity = identity;
@@ -400,7 +418,16 @@ els.login?.addEventListener('click', async () => {
     await state.device.register();
 
     // 3) Get user info (role and caller IDs)
-    const { role, callerIds } = await fetchJson(`${getEdgeFunctionUrl('user-info')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
+    const userInfoUrl = `${getEdgeFunctionUrl('user-info')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`;
+    console.log('[Login] Requesting user info from:', userInfoUrl);
+    const userInfo = await fetchJson(userInfoUrl);
+    console.log('[Login] User info response:', userInfo);
+
+    if (!userInfo || !userInfo.role) {
+      throw new Error('Nie otrzymano informacji o użytkowniku');
+    }
+
+    const { role, callerIds } = userInfo;
     state.userRole = role;
 
     // Populate caller IDs dropdown
@@ -437,7 +464,19 @@ els.login?.addEventListener('click', async () => {
 
   } catch (e) {
     console.error('Login error:', e);
-    const errorMessage = e?.message || String(e) || 'Nieznany błąd';
+    console.error('Error stack:', e?.stack);
+    console.error('Error type:', typeof e);
+    console.error('Error object:', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+
+    let errorMessage = 'Nieznany błąd';
+    if (e && typeof e === 'object') {
+      errorMessage = e.message || e.toString() || 'Nieznany błąd';
+    } else if (typeof e === 'string') {
+      errorMessage = e;
+    } else {
+      errorMessage = String(e);
+    }
+
     setStatus(`Logowanie nieudane: ${errorMessage}`);
 
     // Check if it's a configuration error
