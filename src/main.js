@@ -51,6 +51,11 @@ if (supabaseUrl && supabaseAnonKey) {
   console.warn('Konfiguracja Supabase nie znaleziona. Niektóre funkcje mogą nie działać.');
 }
 
+// Edge Function URL helper
+const getEdgeFunctionUrl = (functionName) => {
+  return `${supabaseUrl}/functions/v1/${functionName}`;
+};
+
 // Global users list for dropdowns
 let allUsers = [];
 
@@ -66,7 +71,7 @@ window.createLead = async function() {
   }
   
   try {
-    const response = await fetch('/.netlify/functions/leads', {
+    const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -98,7 +103,7 @@ window.createLead = async function() {
 // Global function for updating lead status/notes (Caller)
 window.updateLead = async function(leadId, notes, status) {
   try {
-    const response = await fetch('/.netlify/functions/leads', {
+    const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -132,7 +137,7 @@ window.updateLead = async function(leadId, notes, status) {
 // Global function for assigning lead (Manager)
 window.assignLead = async function(leadId, assignedTo) {
   try {
-    const response = await fetch('/.netlify/functions/leads', {
+    const response = await fetch(getEdgeFunctionUrl('leads'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -173,7 +178,7 @@ window.createUser = async function() {
   }
 
   try {
-    const response = await fetch('/.netlify/functions/admin-users', {
+    const response = await fetch(getEdgeFunctionUrl('admin-users'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -367,7 +372,7 @@ els.login?.addEventListener('click', async () => {
   try {
     setStatus('Pobieranie tokena dostępu...');
     // 1) Token with password
-    const { token } = await fetchJson(`/.netlify/functions/token?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
+    const { token } = await fetchJson(`${getEdgeFunctionUrl('token')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
 
     // 2) Register Device
     state.identity = identity;
@@ -378,14 +383,14 @@ els.login?.addEventListener('click', async () => {
         outgoing: '/outgoing.mp3',
         disconnect: '/callend.mp3'
       }
-    }); 
+    });
 
     // Wire device events
     state.device.on('error', e => setStatus(`Błąd urządzenia: ${e.message}`));
     await state.device.register();
 
     // 3) Get user info (role and caller IDs)
-    const { role, callerIds } = await fetchJson(`/.netlify/functions/user-info?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
+    const { role, callerIds } = await fetchJson(`${getEdgeFunctionUrl('user-info')}?identity=${encodeURIComponent(identity)}&password=${encodeURIComponent(password)}`);
     state.userRole = role;
 
     // Populate caller IDs dropdown
@@ -535,7 +540,7 @@ els.loadCalls.addEventListener('click', async () => {
     els.loadCalls.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Ładowanie...</span>';
     els.callList.innerHTML = 'Ładowanie historii połączeń...';
     
-    const res = await fetch(`/.netlify/functions/recordings?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&days=30`);
+    const res = await fetch(`${getEdgeFunctionUrl('recordings')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&days=30`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     
     const json = await res.json();
@@ -618,7 +623,7 @@ async function loadUsers() {
   if (state.userRole !== 'admin') return;
   els.usersList.innerHTML = 'Ładowanie użytkowników...';
   try {
-    const response = await fetch(`/.netlify/functions/admin-users?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
+    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { users } = await response.json();
     renderUsers(users);
@@ -663,7 +668,7 @@ async function loadLeads(role) {
   
   targetList.innerHTML = 'Ładowanie leadów...';
   try {
-    const response = await fetch(`/.netlify/functions/leads?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=get`);
+    const response = await fetch(`${getEdgeFunctionUrl('leads')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=get`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { leads } = await response.json();
     if (role === 'manager') {
@@ -758,7 +763,7 @@ function renderCallerLeads(leads) {
 async function loadUsersForAssignment() {
   if (state.userRole !== 'manager') return;
   try {
-    const response = await fetch(`/.netlify/functions/admin-users?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
+    const response = await fetch(`${getEdgeFunctionUrl('admin-users')}?identity=${encodeURIComponent(state.identity)}&password=${encodeURIComponent(state.password)}&action=list`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const { users } = await response.json();
     allUsers = users || [];
